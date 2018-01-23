@@ -19,7 +19,7 @@ typedef struct lcb_opentracing_string_t {
     const char* data;
     int size;
 } lcb_opentracing_string_t;
-≈
+
 typedef struct lcb_span_id_t {
     enum {RequestQueue, DispatchToServer,
         ResponseDecoding,
