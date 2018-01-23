@@ -98,28 +98,28 @@ typedef struct opentracing_value_t {
     } data;
 } opentracing_value_t;
 
-struct opentracing_dictionary_t {
-    opentracing_string_t key;
-    opentracing_value_t value;
-    opentracing_dictionary_t* next;
+struct lcb_opentracing_dictionary_t {
+    lcb_opentracing_string_t key;
+    lcb_opentracing_value_t value;
+    lcb_opentracing_dictionary_t* next;
 };
 
-typedef opentracing_dictionary_t opentracing_tags_t;
-typedef struct opentracing_start_span_options_t {
+typedef lcb_opentracing_dictionary_t lcb_opentracing_tags_t;
+typedef struct lcb_opentracing_start_span_options_t {
     struct timespec start_timestamp;
-    const opentracing_span_references_t* references;
-    const opentracing_tags_t* tags;
-} opentracing_start_span_options_t;
+    const lcb_opentracing_span_references_t* references;
+    const lcb_opentracing_tags_t* tags;
+} lcb_opentracing_start_span_options_t;
 
 
-typedef struct opentracing_finish_span_options_t {
+typedef struct lcb_opentracing_finish_span_options_t {
     struct timespec finish_timestamp;
-} opentracing_finish_span_options_t;
+} lcb_opentracing_finish_span_options_t;
 
 typedef struct lcb_opentracing_span_t {
     void (*destructor)(void* self);
     void (*finish)(void* self,
-                   const opentracing_finish_span_options_t* options);
+                   const lcb_opentracing_finish_span_options_t* options);
     void (*set_operation_id)(void* self,
                                const lcb_opentracing_span_id_t* name);
     void (*set_tag)(void* self,
@@ -128,14 +128,14 @@ typedef struct lcb_opentracing_span_t {
 
     void (*log)(void* self,
                 const opentracing_dictionary_t* fields);
-    const opentracing_span_context_t* (*get_context)(const void* self);
-    const opentracing_tracer_t* (*get_tracer)(const void* self);
+    const lcb_opentracing_span_context_t* (*get_context)(const void* self);
+    const lcb_opentracing_tracer_t* (*get_tracer)(const void* self);
 } lcb_opentracing_span_t;
 
 typedef struct lcb_opentracing_start_span_options_t {
     struct timespec start_timestamp;
-    const opentracing_span_references_t* references;
-    const opentracing_tags_t* tags;
+    const lcb_opentracing_span_references_t* references;
+    const lcb_opentracing_tags_t* tags;
 } lcb_opentracing_start_span_options_t;
 
 struct lcb_opentracing_tracer_t {
@@ -144,32 +144,6 @@ struct lcb_opentracing_tracer_t {
             const void* self,
             const opentracing_string_t* operation_name,
             const opentracing_start_span_options_t* options);
-
-    opentracing_span_context_t* (*extract_binary)(
-            const void* self,
-            const opentracing_string_t* reader);
-
-    void (*close)(void* self);
-};
-
-typedef struct opentracing_start_span_options_t {
-    struct timespec start_timestamp;
-    const opentracing_span_references_t* references;
-    const opentracing_tags_t* tags;
-} opentracing_start_span_options_t;
-
-struct opentracing_tracer_t {
-    void (*destructor)(void* self);
-    lcb_opentracing_span_t* (*start_span_with_options)(
-        const void* self,
-        const opentracing_string_t* operation_name,
-        const opentracing_start_span_options_t* options);
-    int (*inject_binary)(const void* self,
-                         const opentracing_span_context_t* sc,
-                         opentracing_string_buffer_t* writer);
-    opentracing_span_context_t* (*extract_binary)(
-        const void* self,
-        const opentracing_string_t* reader);
 
     void (*close)(void* self);
 };
