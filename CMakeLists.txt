@@ -72,7 +72,7 @@ include_directories(include)
 include_directories(SYSTEM 3rd_party/include)
 
 set(SRCS src/propagation.cpp src/noop.cpp src/tracer.cpp src/c.c)
-add_library(opentracing SHARED ${SRCS})
+add_library(opentracing SHARED ${SRCS} include/opentracing/lcb_ot.h)
 target_include_directories(opentracing INTERFACE "$<INSTALL_INTERFACE:include/>")
 set_target_properties(opentracing PROPERTIES VERSION ${OPENTRACING_VERSION_STRING}
                                              SOVERSION ${OPENTRACING_VERSION_MAJOR})

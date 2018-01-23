@@ -28,11 +28,12 @@ typedef struct opentracing_string_buffer_t {
     int capacity;
 } opentracing_string_buffer_t;
 
-typedef struct opentracing_string_t {
+typedef struct opentracing_string_t_orig {
     const char* data;
     int size;
-} opentracing_string_t;
+} opentracing_string_t_orig;
 
+typedef opentracing_string_t_orig opentracing_string_t;
 typedef enum opentracing_value_index_t {
     opentracing_value_index_bool,
     opentracing_value_index_double,
@@ -73,7 +74,7 @@ struct opentracing_dictionary_t {
     opentracing_value_t value;
     opentracing_dictionary_t* next;
 };
-
+typedef opentracing_dictionary_t opentracing_tags_t;
 typedef bool(*opentracing_foreach_key_value_callback_t)(
     const opentracing_string_t* key, const opentracing_string_t* value);
 
@@ -86,6 +87,7 @@ typedef struct opentracing_span_context_t {
 typedef struct opentracing_finish_span_options_t {
     struct timespec finish_timestamp;
 } opentracing_finish_span_options_t;
+
 
 typedef struct opentracing_span_t {
     void (*destructor)(void* self);
@@ -107,6 +109,7 @@ typedef struct opentracing_span_t {
     const opentracing_span_context_t* (*get_context)(const void* self);
     const opentracing_tracer_t* (*get_tracer)(const void* self);
 } opentracing_span_t;
+
 
 typedef struct opentracing_text_map_reader_t {
     void (*destructor)(void* self);
@@ -154,6 +157,77 @@ typedef struct opentracing_span_references_t {
 } opentracing_span_references_t;
 
 typedef opentracing_dictionary_t opentracing_tags_t;
+typedef struct lcb_opentracing_string_t {
+    const char* data;
+    int size;
+} lcb_opentracing_string_t;
+≈
+typedef struct lcb_span_id {
+    const char* data; // NULL if using enum
+    enum {RequestQueue, DispatchToServer,
+        ResponseDecoding,
+        ResponseResolution} size;
+} lcb_span_id;
+
+typedef union lcb_opentracing_span_id_t {
+    opentracing_string_t_orig name;
+    lcb_span_id id;
+} opentracing_string_t;
+
+typedef struct lcb_opentracing_span_t {
+    void (*destructor)(void* self);
+    void (*finish)(void* self,
+                   const opentracing_finish_span_options_t* options);
+    void (*set_operation_id)(void* self,
+                               const lcb_opentracing_span_id_t* name);
+    void (*set_tag)(void* self,
+                    const lcb_opentracing_tag_id_t* key,
+                    const opentracing_value_t* value);
+
+    void (*log)(void* self,
+                const opentracing_dictionary_t* fields);
+    const opentracing_span_context_t* (*get_context)(const void* self);
+    const opentracing_tracer_t* (*get_tracer)(const void* self);
+} lcb_opentracing_span_t;
+
+typedef struct lcb_opentracing_start_span_options_t {
+    struct timespec start_timestamp;
+    const opentracing_span_references_t* references;
+    const opentracing_tags_t* tags;
+} lcb_opentracing_start_span_options_t;
+
+struct lcb_opentracing_tracer_t {
+    void (*destructor)(void* self);
+    opentracing_span_t* (*start_span_with_options)(
+            const void* self,
+            const opentracing_string_t* operation_name,
+            const opentracing_start_span_options_t* options);
+    int (*inject_binary)(const void* self,
+                         const opentracing_span_context_t* sc,
+                         opentracing_string_buffer_t* writer);
+    int (*inject_text_map)(const void* self,
+                           const opentracing_span_context_t* sc,
+                           opentracing_text_map_writer_t* writer);
+    int (*inject_http_headers)(const void* self,
+                               const opentracing_span_context_t* sc,
+                               opentracing_http_headers_writer_t* writer);
+    int (*inject_custom_carrier)(const void* self,
+                                 const opentracing_span_context_t* sc,
+                                 opentracing_custom_carrier_writer_t* writer);
+    opentracing_span_context_t* (*extract_binary)(
+            const void* self,
+            const opentracing_string_t* reader);
+    opentracing_span_context_t* (*extract_text_map)(
+            const void* self,
+            const opentracing_text_map_reader_t* reader);
+    opentracing_span_context_t* (*extract_http_headers)(
+            const void* self,
+            const opentracing_http_headers_reader_t* reader);
+    opentracing_span_context_t* (*extract_custom_carrier)(
+            const void* self,
+            const opentracing_custom_carrier_reader_t* reader);
+    void (*close)(void* self);
+};
 
 typedef struct opentracing_start_span_options_t {
     struct timespec start_timestamp;
