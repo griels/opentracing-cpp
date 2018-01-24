@@ -12,29 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 #ifdef __cplusplus
-//extern "C" {
+extern "C" {
 #endif
 
 typedef struct opentracing_string_t {
     const char* data;
     int size;
 } opentracing_string_t;
-
-#ifdef OT_STR_GEN
-#error OT_STR_GEN defined
-#endif
-
-#define OT_STR_GEN(X) { static opentracing_string_t result={#X,sizeof(#X)/sizeof(char)}; return &result; };
-
-void lcb_ot_pt_str(const opentracing_string_t* string)
-{
-    char* buffer= malloc(string->size+1);
-    memcpy(buffer,string->data,string->size);
-    buffer[string->size]=0;
-    printf("%s",buffer);
-    free(buffer);
-}
-
 
 typedef struct opentracing_tracer_t opentracing_tracer_t;
 
@@ -119,6 +103,20 @@ typedef struct lcb_span_id_t {
         #undef MAND
     } m_id;
 } lcb_span_id_t;
+#ifdef OT_STR_GEN
+#error OT_STR_GEN defined
+#endif
+
+#define OT_STR_GEN(X) { static opentracing_string_t result={#X,sizeof(#X)/sizeof(char)}; return &result; };
+
+void lcb_ot_pt_str(const opentracing_string_t* string)
+{
+    char* buffer= malloc(string->size+1);
+    memcpy(buffer,string->data,string->size);
+    buffer[string->size]=0;
+    printf("%s",buffer);
+    free(buffer);
+}
 
 const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
 {
@@ -137,6 +135,7 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
             default:
                 OT_STR_GEN("");
     }
+    return NULL;
 }
 #ifdef PP_EACH_TAG_ID
 #error PP_EACH_TAG_ID defined already
