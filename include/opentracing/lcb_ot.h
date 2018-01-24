@@ -111,7 +111,7 @@ typedef struct lcb_tag_id_t
 void test()
 {
     lcb_span_id_t test={NULL,lcb_span_id_t::DispatchToServer};
-    printf(ot_str(lcb_ot_id_str(lcb_span_id_t::DispatchToServer)));
+    printf(ot_str(lcb_ot_id_str(test)));
 }
 
 void func()
