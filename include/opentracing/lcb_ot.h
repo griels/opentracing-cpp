@@ -190,7 +190,6 @@ typedef struct lcb_tag_id_t
 
 #undef PP_EACH_TAG_ID
 
-#define TAG_ID(dest,nspace,type) (dest)->ns=lcb_tag_ns_##nspace; (dest)->reserved=NULL; (dest)->b=offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t);
 
 /*const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
 {
@@ -212,13 +211,13 @@ typedef struct lcb_tag_id_t
     return NULL;
 }*/
 #define OT_STR_GEN_VAL_FULL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
+#define TAG_ID(nspace,type) {NULL, lcb_tag_ns_##nspace, offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t)};
+
 static void test()
 {
-    lcb_tag_id_t x;
+    lcb_tag_id_t x=TAG_ID(couchbase,operation_id);
     lcb_tag_set_couchbase y={.operation_id=OT_STR_GEN_VAL_FULL(Hello),.service=OT_STR_GEN_VAL_FULL(World)};
-    TAG_ID(&x,couchbase,operation_id)
     lcb_span_id_t test={NULL,lcb_span_id_DispatchToServer};
-
     lcb_ot_pt_str(lcb_ot_id_str(test));
 }
 
@@ -274,5 +273,7 @@ struct lcb_opentracing_tracer_t {
 
     void (*close)(void* self);
 };
+
+
 
 #endif //OPENTRACING_CPP_LCB_OT_H
