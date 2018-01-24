@@ -183,7 +183,6 @@ union tag_t {
 typedef struct lcb_tag_id_t
 {
     const char* reserved; // NULL
-
     enum lcb_tag_ns_t ns;
     size_t b;
 
