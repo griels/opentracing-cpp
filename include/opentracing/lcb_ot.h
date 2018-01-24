@@ -84,7 +84,7 @@ typedef struct opentracing_string_buffer_t {
     int capacity;
 } opentracing_string_buffer_t;
 
-typedef struct opentracing_value_t {
+typedef struct lcb_opentracing_value_t {
     opentracing_value_index_t value_index;
     union {
         bool bool_value;
@@ -100,7 +100,7 @@ typedef struct opentracing_value_t {
 
 struct opentracing_dictionary_t {
     opentracing_string_t key;
-    opentracing_value_t value;
+    lcb_opentracing_value_t value;
     opentracing_dictionary_t* next;
 };
 
@@ -124,7 +124,7 @@ typedef struct lcb_opentracing_span_t {
                                const lcb_opentracing_span_id_t* name);
     void (*set_tag)(void* self,
                     const lcb_opentracing_tag_id_t* key,
-                    const opentracing_value_t* value);
+                    const lcb_opentracing_value_t* value);
 
     void (*log)(void* self,
                 const opentracing_dictionary_t* fields);
@@ -148,28 +148,6 @@ struct lcb_opentracing_tracer_t {
     opentracing_span_context_t* (*extract_binary)(
             const void* self,
             const opentracing_string_t* reader);
-
-    void (*close)(void* self);
-};
-
-typedef struct opentracing_start_span_options_t {
-    struct timespec start_timestamp;
-    const opentracing_span_references_t* references;
-    const opentracing_tags_t* tags;
-} opentracing_start_span_options_t;
-
-struct opentracing_tracer_t {
-    void (*destructor)(void* self);
-    lcb_opentracing_span_t* (*start_span_with_options)(
-        const void* self,
-        const opentracing_string_t* operation_name,
-        const opentracing_start_span_options_t* options);
-    int (*inject_binary)(const void* self,
-                         const opentracing_span_context_t* sc,
-                         opentracing_string_buffer_t* writer);
-    opentracing_span_context_t* (*extract_binary)(
-        const void* self,
-        const opentracing_string_t* reader);
 
     void (*close)(void* self);
 };

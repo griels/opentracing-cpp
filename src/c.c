@@ -53,11 +53,11 @@ typedef struct noop_span_t {
                                const opentracing_string_t* name);
     void (*set_tag)(void* self,
                     const opentracing_string_t* key,
-                    const opentracing_value_t* value);
+                    const lcb_opentracing_value_t* value);
     void (*set_baggage_item)(void* self,
                              const opentracing_string_t* restricted_key,
                              const opentracing_string_t* value);
-    const opentracing_value_t* (*baggage_item)(
+    const lcb_opentracing_value_t* (*baggage_item)(
         const void* self,
         const opentracing_string_t* restricted_key);
     void (*log)(void* self,
@@ -83,7 +83,7 @@ static void noop_span_set_operation_name(
 static void noop_span_set_tag(
     void* self,
     const opentracing_string_t* key,
-    const opentracing_value_t* value)
+    const lcb_opentracing_value_t* value)
 {
 }
 
@@ -94,7 +94,7 @@ static void noop_span_set_baggage_item(
 {
 }
 
-static const opentracing_value_t* noop_span_baggage_item(
+static const lcb_opentracing_value_t* noop_span_baggage_item(
     const void* self,
     const opentracing_string_t* restricted_key)
 {
