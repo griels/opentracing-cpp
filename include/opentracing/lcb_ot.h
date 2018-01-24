@@ -11,9 +11,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "stddef.h"
 #ifdef __cplusplus
-extern "C" {
+//extern "C" {
 #endif
+
+// borrowed from libcouchbase C defs
 
 typedef struct opentracing_string_t {
     const char* data;
@@ -84,30 +87,7 @@ typedef struct name {\
     struct name* next;\
 } name;
 
-#define PP_EACH_SPAN_ID(MAND,OPT,DIV)\
-    OPT(RequestQueue) DIV\
-    MAND(RequestEncoding) DIV\
-    MAND(DispatchToServer) DIV\
-    MAND(ResponseDecoding) DIV\
-    OPT(ResponseResolution)
-
-typedef struct lcb_span_id_t {
-    const char* reserved;
-    enum id {
-        #define MAND(X) X
-        #define OPT(X) X
-        #define DIV ,
-            PP_EACH_SPAN_ID(MAND,OPT,DIV)
-        #undef DIV
-        #undef OPT
-        #undef MAND
-    } m_id;
-} lcb_span_id_t;
-#ifdef OT_STR_GEN
-#error OT_STR_GEN defined
-#endif
-
-#define OT_STR_GEN(X) { static opentracing_string_t result={#X,sizeof(#X)/sizeof(char)}; return &result; };
+// opentracing string utilities
 
 void lcb_ot_pt_str(const opentracing_string_t* string)
 {
@@ -118,12 +98,41 @@ void lcb_ot_pt_str(const opentracing_string_t* string)
     free(buffer);
 }
 
+#ifdef OT_STR_GEN
+#error OT_STR_GEN defined
+#endif
+
+#define OT_STR_GEN_VAL(X) {#X,sizeof(#X)/sizeof(char)}
+#define OT_STR_GEN(X) { static opentracing_string_t result=OT_STR_GEN_VAL(X); return &result; };
+// enum-based tag/span IDs with reflection
+
+// spans
+#define PP_EACH_SPAN_ID(MAND,OPT,DIV)\
+    OPT(RequestQueue) DIV\
+    MAND(RequestEncoding) DIV\
+    MAND(DispatchToServer) DIV\
+    MAND(ResponseDecoding) DIV\
+    OPT(ResponseResolution)
+
+typedef struct lcb_span_id_t {
+    const char* reserved;
+    enum id {
+        #define MAND(X) lcb_span_id_##X
+        #define OPT(X) MAND(X)
+        #define DIV ,
+            PP_EACH_SPAN_ID(MAND,OPT,DIV)
+        #undef DIV
+        #undef OPT
+        #undef MAND
+    } m_id;
+} lcb_span_id_t;
+
 const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
 {
     switch(id.m_id)
     {
         #define MAND(X)\
-            case X:\
+            case lcb_span_id_##X:\
                 OT_STR_GEN(X);
         #define OPT(X) MAND(X)
         #define DIV
@@ -137,6 +146,9 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
     }
     return NULL;
 }
+
+//tags
+
 #ifdef PP_EACH_TAG_ID
 #error PP_EACH_TAG_ID defined already
 #endif
@@ -146,51 +158,76 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
     NAMESPACE_FN(peer,address)
 
 
+#define DIV ,
+#define NS_ENUM(X,...) lcb_tag_ns_##X
+    typedef enum lcb_tag_ns_t { PP_EACH_TAG_ID(NS_ENUM,DIV) } lcb_tag_ns_t;
+#undef NS_ENUM
+#undef DIV
+
+#define DIV
+#define TAG_TYPE(NAMESPACE,...)\
+\
+typedef struct lcb_tag_set_##NAMESPACE\
+{\
+    opentracing_value_t __VA_ARGS__;\
+} lcb_tag_set_##NAMESPACE;\
+
+PP_EACH_TAG_ID(TAG_TYPE,DIV);
+union tag_t {
+#define TAG_ENTRY(X,...) lcb_tag_set_##X m_##X;
+    PP_EACH_TAG_ID(TAG_ENTRY,DIV);
+} tag_t;
+#undef TAG_TYPE
+#undef DIV
+
 typedef struct lcb_tag_id_t
 {
     const char* reserved; // NULL
 
-  //  struct ns {
-        #define DIV ,
-        #define NS_ENUM(X,...) X
-            enum { PP_EACH_TAG_ID(NS_ENUM,DIV) } type;
-        #undef NS_ENUM
-        #undef DIV
-//    } ns;/*
-    union tag_t {
-        #define TAG_TYPE(NAMESPACE,...)\
-        \
-        struct NAMESPACE\
-        {\
-            opentracing_value_t __VA_ARGS__;\
-        } NAMESPACE;\
-
-        #define DIV
-            PP_EACH_TAG_ID(TAG_TYPE,DIV);
-        #undef DIV
-        #undef TAG_TYPE
-    } tag_t;
-    #undef PP_EACH_TAG_ID
+    enum lcb_tag_ns_t ns;
     size_t b;
 
 } lcb_tag_id_t;
 
-#undef OT_STR_GEN
+#undef PP_EACH_TAG_ID
 
-#define TAG_ID(dest,ns,type) /*typedef lcb_tag_id_t::tag_t::##ns m_ns;*/ (dest)->reserved=NULL;  (dest)->b=0;//offsetof(m_ns,type);
-void test()
+#define TAG_ID(dest,nspace,type) (dest)->ns=lcb_tag_ns_##nspace; (dest)->reserved=NULL; (dest)->b=offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t);
+
+/*const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
 {
-    lcb_span_id_t test={NULL,DispatchToServer};
+    switch(id.ns)
+    {
+        #define MAND(X)\
+            case lcb_span_id_##X:\
+                OT_STR_GEN(X);
+        #define OPT(X) MAND(X)
+        #define DIV
+            break;
+        PP_EACH_SPAN_ID(MAND,OPT,DIV);
+        #undef DIV
+        #undef OPT
+        #undef MAND
+            default:
+                OT_STR_GEN("");
+    }
+    return NULL;
+}*/
+#define OT_STR_GEN_VAL_FULL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
+static void test()
+{
+    lcb_tag_id_t x;
+    lcb_tag_set_couchbase y={.operation_id=OT_STR_GEN_VAL_FULL(Hello),.service=OT_STR_GEN_VAL_FULL(World)};
+    TAG_ID(&x,couchbase,operation_id)
+    lcb_span_id_t test={NULL,lcb_span_id_DispatchToServer};
 
     lcb_ot_pt_str(lcb_ot_id_str(test));
 }
 
-void func()
-{
-     lcb_tag_id_t tag;
-     TAG_ID(&tag,couchbase,operation_id);
-}
+#undef OT_STR_GEN
 
+
+
+// use a union of opentracing_string_t and tag/span enum types, the latter will always start with a NULL const char*
 #define LCB_OT_STR_UNION(type) \
 typedef union lcb_opentracing_##type##_t {\
     opentracing_string_t name;\
