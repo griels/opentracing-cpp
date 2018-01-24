@@ -31,10 +31,10 @@ const char* ot_str(const opentracing_string_t* string)
 }
 
 #define PP_EACH_SPAN_ID(MAND,OPT,DIV)\
-    OPT(RequestQueue)##DIV\
-    MAND(RequestEncoding)##DIV\
-    MAND(DispatchToServer)##DIV\
-    MAND(ResponseDecoding)##DIV\
+    OPT(RequestQueue) DIV\
+    MAND(RequestEncoding) DIV\
+    MAND(DispatchToServer) DIV\
+    MAND(ResponseDecoding) DIV\
     OPT(ResponseResolution)
 
 typedef struct lcb_span_id_t {
@@ -47,15 +47,15 @@ typedef struct lcb_span_id_t {
         #undef DIV
         #undef OPT
         #undef MAND
-    };
+    } m_id;
 } lcb_span_id_t;
 
-const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t::id id)
+const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
 {
-    switch(id)
+    switch(id.m_id)
     {
         #define MAND(X)\
-            case lcb_span_id_t::X:\
+            case lcb_span_id_t::##X:\
                 OT_STR_GEN(X);
         #define OPT(X) MAND(X)
         #define DIV
@@ -69,7 +69,7 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t::id id)
     }
 }
 
-struct lcb_tag_id_t
+typedef struct lcb_tag_id_t
 {
     #ifdef PP_EACH_TAG_ID
     #error PP_EACH_TAG_ID defined already
@@ -100,23 +100,23 @@ struct lcb_tag_id_t
         #undef DIV
         #undef TAG_TYPE
     } ;
+    #undef PP_EACH_TAG_ID
     ns a;
     tag_t b;
-    #undef PP_EACH_TAG_ID
 
-};
+} lcb_tag_id_t;
 
 #undef OT_STR_GEN
 
 void test()
 {
-    lcb_span_id_t test;
+    lcb_span_id_t test={NULL,lcb_span_id_t::DispatchToServer};
     printf(ot_str(lcb_ot_id_str(lcb_span_id_t::DispatchToServer)));
 }
 
 void func()
 {
-    lcb_tag_id_t tag={lcb_tag_id_t::ns::couchbase, lcb_tag_id_t::tag_t::couchbase::operation_id};
+    static  lcb_tag_id_t tag={lcb_tag_id_t::ns::couchbase, lcb_tag_id_t::tag_t::couchbase::operation_id};
 }
 
 #define LCB_OT_STR_UNION(type) \
