@@ -9,10 +9,9 @@
 #include <stdint.h>
 #include <time.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
 #ifdef __cplusplus
-//extern "C" {
+extern "C" {
 #endif
 
 typedef struct opentracing_string_t {
@@ -26,15 +25,108 @@ typedef struct opentracing_string_t {
 
 #define OT_STR_GEN(X) { static opentracing_string_t result={#X,sizeof(#X)/sizeof(char)}; return &result; };
 
-void lcb_ot_pt_str(const opentracing_string_t* string)
+const char* ot_str(const opentracing_string_t* string)
 {
-    char* buffer= malloc(string->size+1);
-    memcpy(buffer,string->data,string->size);
-    buffer[string->size]=0;
-    printf("%s",buffer);
-    free(buffer);
+    return string->data;
 }
 
+#define PP_EACH_SPAN_ID(MAND,OPT,DIV)\
+    OPT(RequestQueue) DIV\
+    MAND(RequestEncoding) DIV\
+    MAND(DispatchToServer) DIV\
+    MAND(ResponseDecoding) DIV\
+    OPT(ResponseResolution)
+
+typedef struct lcb_span_id_t {
+    const char* reserved;
+    enum id {
+        #define MAND(X) X
+        #define OPT(X) X
+        #define DIV ,
+            PP_EACH_SPAN_ID(MAND,OPT,DIV)
+        #undef DIV
+        #undef OPT
+        #undef MAND
+    } m_id;
+} lcb_span_id_t;
+
+const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
+{
+    switch(id.m_id)
+    {
+        #define MAND(X)\
+            case lcb_span_id_t::##X:\
+                OT_STR_GEN(X);
+        #define OPT(X) MAND(X)
+        #define DIV
+            break;
+        PP_EACH_SPAN_ID(MAND,OPT,DIV);
+        #undef DIV
+        #undef OPT
+        #undef MAND
+            default:
+                OT_STR_GEN("");
+    }
+}
+
+typedef struct lcb_tag_id_t
+{
+    #ifdef PP_EACH_TAG_ID
+    #error PP_EACH_TAG_ID defined already
+    #endif
+    #define PP_EACH_TAG_ID(NAMESPACE_FN,DIV)\
+        NAMESPACE_FN(couchbase,operation_id,service)##DIV\
+        NAMESPACE_FN(local,address)##DIV\
+        NAMESPACE_FN(peer,address)
+
+    struct ns {
+        #define DIV ,
+        #define NS_ENUM(X,...) X
+            enum { PP_EACH_TAG_ID(NS_ENUM,DIV) };
+        #undef NS_ENUM
+        #undef DIV
+    };
+    union tag_t {
+        #define TAG_TYPE(NAMESPACE,...)\
+            struct NAMESPACE\
+            {\
+                enum id\
+                {\
+                    __VA_ARGS__\
+                };\
+            };
+        #define DIV
+            PP_EACH_TAG_ID(TAG_TYPE,DIV);
+        #undef DIV
+        #undef TAG_TYPE
+    } ;
+    #undef PP_EACH_TAG_ID
+    ns a;
+    tag_t b;
+
+} lcb_tag_id_t;
+
+#undef OT_STR_GEN
+
+void test()
+{
+    lcb_span_id_t test={NULL,lcb_span_id_t::DispatchToServer};
+    printf(ot_str(lcb_ot_id_str(test)));
+}
+
+void func()
+{
+    static  lcb_tag_id_t tag={lcb_tag_id_t::ns::couchbase, lcb_tag_id_t::tag_t::couchbase::operation_id};
+}
+
+#define LCB_OT_STR_UNION(type) \
+typedef union lcb_opentracing_##type##_t {\
+    opentracing_string_t name;\
+    lcb_##type##_t id;\
+} lcb_opentracing_##type##_t;
+
+LCB_OT_STR_UNION(tag_id);
+LCB_OT_STR_UNION(span_id);
 
 typedef struct opentracing_tracer_t opentracing_tracer_t;
 
@@ -93,116 +185,14 @@ typedef struct opentracing_value_t {
     } data;
 } opentracing_value_t;
 
-#define LCB_OPENTRACING_DICT(name,type)\
-typedef struct name {\
+#define LCB_OPENTRACING_DICT(type)\
+struct lcb_opentracing_dictionary_##type##_t {\
     type key;\
     opentracing_value_t value;\
-    struct name* next;\
-} name;
-
-#define PP_EACH_SPAN_ID(MAND,OPT,DIV)\
-    OPT(RequestQueue) DIV\
-    MAND(RequestEncoding) DIV\
-    MAND(DispatchToServer) DIV\
-    MAND(ResponseDecoding) DIV\
-    OPT(ResponseResolution)
-
-typedef struct lcb_span_id_t {
-    const char* reserved;
-    enum id {
-        #define MAND(X) X
-        #define OPT(X) X
-        #define DIV ,
-            PP_EACH_SPAN_ID(MAND,OPT,DIV)
-        #undef DIV
-        #undef OPT
-        #undef MAND
-    } m_id;
-} lcb_span_id_t;
-
-const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
-{
-    switch(id.m_id)
-    {
-        #define MAND(X)\
-            case X:\
-                OT_STR_GEN(X);
-        #define OPT(X) MAND(X)
-        #define DIV
-            break;
-        PP_EACH_SPAN_ID(MAND,OPT,DIV);
-        #undef DIV
-        #undef OPT
-        #undef MAND
-            default:
-                OT_STR_GEN("");
-    }
-}
-#ifdef PP_EACH_TAG_ID
-#error PP_EACH_TAG_ID defined already
-#endif
-#define PP_EACH_TAG_ID(NAMESPACE_FN,DIV)\
-    NAMESPACE_FN(couchbase,operation_id,service) DIV\
-    NAMESPACE_FN(local,address) DIV\
-    NAMESPACE_FN(peer,address)
-
-
-typedef struct lcb_tag_id_t
-{
-    const char* reserved; // NULL
-
-  //  struct ns {
-        #define DIV ,
-        #define NS_ENUM(X,...) X
-            enum { PP_EACH_TAG_ID(NS_ENUM,DIV) } type;
-        #undef NS_ENUM
-        #undef DIV
-//    } ns;/*
-    union tag_t {
-        #define TAG_TYPE(NAMESPACE,...)\
-        \
-        struct NAMESPACE\
-        {\
-            opentracing_value_t __VA_ARGS__;\
-        } NAMESPACE;\
-
-        #define DIV
-            PP_EACH_TAG_ID(TAG_TYPE,DIV);
-        #undef DIV
-        #undef TAG_TYPE
-    } tag_t;
-    #undef PP_EACH_TAG_ID
-    size_t b;
-
-} lcb_tag_id_t;
-
-#undef OT_STR_GEN
-
-#define TAG_ID(dest,ns,type) /*typedef lcb_tag_id_t::tag_t::##ns m_ns;*/ (dest)->reserved=NULL;  (dest)->b=0;//offsetof(m_ns,type);
-void test()
-{
-    lcb_span_id_t test={NULL,DispatchToServer};
-
-    lcb_ot_pt_str(lcb_ot_id_str(test));
+    lcb_opentracing_dictionary_##type##_t* next;\
 }
 
-void func()
-{
-     lcb_tag_id_t tag;
-     TAG_ID(&tag,couchbase,operation_id);
-}
-
-#define LCB_OT_STR_UNION(type) \
-typedef union lcb_opentracing_##type##_t {\
-    opentracing_string_t name;\
-    lcb_##type##_t id;\
-} lcb_opentracing_##type##_t;
-
-LCB_OT_STR_UNION(tag_id);
-LCB_OT_STR_UNION(span_id);
-
-
-LCB_OPENTRACING_DICT(lcb_opentracing_tags_t,lcb_tag_id_t);
+typedef LCB_OPENTRACING_DICT(lcb_opentracing_tag_id_t) lcb_opentracing_tags_t;
 typedef struct lcb_opentracing_start_span_options_t {
     struct timespec start_timestamp;
     const opentracing_span_references_t* references;
@@ -229,6 +219,11 @@ typedef struct lcb_opentracing_span_t {
     const opentracing_tracer_t* (*get_tracer)(const void* self);
 } lcb_opentracing_span_t;
 
+typedef struct lcb_opentracing_start_span_options_t {
+    struct timespec start_timestamp;
+    const opentracing_span_references_t* references;
+    const lcb_opentracing_tags_t* tags;
+} lcb_opentracing_start_span_options_t;
 
 struct lcb_opentracing_tracer_t {
     void (*destructor)(void* self);

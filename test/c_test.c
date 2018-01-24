@@ -42,7 +42,7 @@ static void test_c_interface()
         .data = "x",
         .size = 1
     };
-    const opentracing_value_t tag_value = {
+    const lcb_opentracing_value_t tag_value = {
         .value_index = opentracing_value_index_uint64,
         .data = {
             .uint64_value = 1
@@ -57,7 +57,7 @@ static void test_c_interface()
     assert(fields);
     fields->key = (opentracing_string_t) { .data = "event", .size = 5 };
     fields->value =
-        (opentracing_value_t) { .value_index = opentracing_value_index_string,
+        (lcb_opentracing_value_t) { .value_index = opentracing_value_index_string,
                                 .data = {
                                     .string_value = {
                                         .data = "xyz",
@@ -67,7 +67,7 @@ static void test_c_interface()
     fields->next->key =
         (opentracing_string_t) { .data = "abc", .size = 3 };
     fields->next->value =
-        (opentracing_value_t) { .value_index = opentracing_value_index_int64,
+        (lcb_opentracing_value_t) { .value_index = opentracing_value_index_int64,
                                 .data = { .int64_value = 123 } };
     span2->log(span2, fields);
     free(fields->next);
