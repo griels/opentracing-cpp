@@ -210,13 +210,13 @@ typedef struct lcb_tag_id_t
     }
     return NULL;
 }*/
-#define OT_STR_GEN_VAL_FULL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
+#define OT_STR_VAL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
 #define TAG_ID(nspace,type) {NULL, lcb_tag_ns_##nspace, offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t)};
 
 static void test()
 {
     lcb_tag_id_t x=TAG_ID(couchbase,operation_id);
-    lcb_tag_set_couchbase y={.operation_id=OT_STR_GEN_VAL_FULL(Hello),.service=OT_STR_GEN_VAL_FULL(World)};
+    lcb_tag_set_couchbase y={.operation_id=OT_STR_VAL(Hello),.service=OT_STR_VAL(World)};
     lcb_span_id_t test={NULL,lcb_span_id_DispatchToServer};
     lcb_ot_pt_str(lcb_ot_id_str(test));
 }
@@ -256,7 +256,13 @@ typedef struct lcb_opentracing_span_t {
     void (*set_tag)(void* self,
                     const lcb_opentracing_tag_id_t* key,
                     const opentracing_value_t* value);
-
+    // baggage callbacks currently neither called nor implemented by libcouchbase, but left for future expansion
+    void (*set_baggage_item)(void* self,
+                             const opentracing_string_t* restricted_key,
+                             const opentracing_string_t* value); // currently unused, leave as NULL if unimplemented
+    const opentracing_value_t* (*baggage_item)(
+        const void* self,
+        const opentracing_string_t* restricted_key); // currently unused, leave as NULL if unimplemented
     void (*log)(void* self,
                 const opentracing_dictionary_t* fields);
     const opentracing_span_context_t* (*get_context)(const void* self);
