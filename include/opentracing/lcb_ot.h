@@ -212,7 +212,7 @@ const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
     const opentracing_string_t* prefix={0};
     switch(id.ns)
     {
-        #define PREFIX_FN(PREFIX,X,...) case lcb_tag_id_##PREFIX##_##X : OT_STR_GEN(PREFIX##_##X);
+        #define PREFIX_FN(PREFIX,X,...) case lcb_tag_id_##PREFIX##_##X : OT_STR_GEN(PREFIX.X);
         #define MAND(X,...)\
             case lcb_tag_ns_##X:\
                 switch(id.b)\
