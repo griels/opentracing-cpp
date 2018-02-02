@@ -103,7 +103,8 @@ void lcb_ot_pt_str(const opentracing_string_t* string)
 #endif
 
 #define OT_STR_GEN_VAL(X) {#X,sizeof(#X)/sizeof(char)}
-#define OT_STR_GEN(X) { static opentracing_string_t result=OT_STR_GEN_VAL(X); return &result; };
+#define STAT_STR_GEN(X) static opentracing_string_t result=OT_STR_GEN_VAL(X)
+#define OT_STR_GEN(X) { STAT_STR_GEN(X); return &result; };
 // enum-based tag/span IDs with reflection
 
 // spans
@@ -133,7 +134,7 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
     {
         #define MAND(X)\
             case lcb_span_id_##X:\
-                OT_STR_GEN(X);
+                OT_STR_GEN(X)
         #define OPT(X) MAND(X)
         #define DIV
             break;
@@ -174,7 +175,8 @@ typedef struct lcb_tag_set_##NAMESPACE\
 
 PP_EACH_TAG_ID(TAG_TYPE,DIV);
 union tag_t {
-#define TAG_ENTRY(X,...) lcb_tag_set_##X m_##X;
+#define TAG_ENTRY(X,...)\
+    lcb_tag_set_##X m_##X;
     PP_EACH_TAG_ID(TAG_ENTRY,DIV);
 } tag_t;
 #undef TAG_TYPE
@@ -188,34 +190,52 @@ typedef struct lcb_tag_id_t
 
 } lcb_tag_id_t;
 
-#undef PP_EACH_TAG_ID
+#define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
+
+#define ENCODE1(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x);
+#define ENCODE2(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE1(PREFIX,__VA_ARGS__)
+#define ENCODE3(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE2(PREFIX,__VA_ARGS__)
+#define ENCODE4(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x);, ENCODE3(PREFIX,__VA_ARGS__)
+#define ENCODE5(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE4(PREFIX,__VA_ARGS__)
+#define ENCODE6(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE5(PREFIX,__VA_ARGS__)
+
+#define FOO(PREFIX,...) GET_MACRO(__VA_ARGS__, ENCODE4, ENCODE3, ENCODE2, ENCODE1)(PREFIX,__VA_ARGS__)
 
 
-/*const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
+
+const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
 {
+    const opentracing_string_t* prefix={0};
     switch(id.ns)
     {
-        #define MAND(X)\
+        #define MAND(X,...)\
             case lcb_span_id_##X:\
-                OT_STR_GEN(X);
-        #define OPT(X) MAND(X)
-        #define DIV
-            break;
-        PP_EACH_SPAN_ID(MAND,OPT,DIV);
+                switch(id.b)\
+                {\
+                    FOO(X,__VA_ARGS__)\
+                }
+
+
+        #define DIV break;
+        PP_EACH_TAG_ID(MAND, DIV);
         #undef DIV
-        #undef OPT
         #undef MAND
             default:
                 OT_STR_GEN("");
+                break;
     }
     return NULL;
-}*/
+}
+
+#undef PP_EACH_TAG_ID
+
 #define OT_STR_VAL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
 #define TAG_ID(nspace,type) {NULL, lcb_tag_ns_##nspace, offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t)};
 
 static void test()
 {
     lcb_tag_id_t x=TAG_ID(couchbase,operation_id);
+    const char* result=lcb_ot_tag_str(x);
     lcb_tag_set_couchbase y={.operation_id=OT_STR_VAL(Hello),.service=OT_STR_VAL(World)};
     lcb_span_id_t test={NULL,lcb_span_id_DispatchToServer};
     lcb_ot_pt_str(lcb_ot_id_str(test));
