@@ -174,12 +174,29 @@ typedef struct lcb_tag_set_##NAMESPACE\
 } lcb_tag_set_##NAMESPACE;\
 
 PP_EACH_TAG_ID(TAG_TYPE,DIV);
+#undef TAG_TYPE
+
 union tag_t {
 #define TAG_ENTRY(X,...)\
     lcb_tag_set_##X m_##X;
     PP_EACH_TAG_ID(TAG_ENTRY,DIV);
 } tag_t;
-#undef TAG_TYPE
+#undef TAG_ENTRY
+
+#define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
+
+#define ENCODE1(FN,PREFIX,x,...) FN(PREFIX,x,...)
+#define ENCODE2(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE1(FN,PREFIX,__VA_ARGS__)
+#define ENCODE3(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE2(FN,PREFIX,__VA_ARGS__)
+#define ENCODE4(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE3(FN,PREFIX,__VA_ARGS__)
+#define ENCODE5(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE4(FN,PREFIX,__VA_ARGS__)
+#define ENCODE6(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE5(FN,PREFIX,__VA_ARGS__)
+
+#define FOO(PREFIX_FN,PREFIX,...) GET_MACRO(__VA_ARGS__, ENCODE4, ENCODE3, ENCODE2, ENCODE1)(PREFIX_FN,PREFIX,__VA_ARGS__)
+
+#define TAG_ENUM(X,...) typedef enum lcb_tag_id_##X##_t {__VA_ARGS__} lcb_tag_id_##X##_t;
+PP_EACH_TAG_ID(TAG_ENUM,DIV)
+#undef TAG_ENUM
 #undef DIV
 
 typedef struct lcb_tag_id_t
@@ -190,16 +207,6 @@ typedef struct lcb_tag_id_t
 
 } lcb_tag_id_t;
 
-#define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
-
-#define ENCODE1(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x);
-#define ENCODE2(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE1(PREFIX,__VA_ARGS__)
-#define ENCODE3(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE2(PREFIX,__VA_ARGS__)
-#define ENCODE4(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x);, ENCODE3(PREFIX,__VA_ARGS__)
-#define ENCODE5(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE4(PREFIX,__VA_ARGS__)
-#define ENCODE6(PREFIX,x,...) case x: OT_STR_GEN(PREFIX.##x); ENCODE5(PREFIX,__VA_ARGS__)
-
-#define FOO(PREFIX,...) GET_MACRO(__VA_ARGS__, ENCODE4, ENCODE3, ENCODE2, ENCODE1)(PREFIX,__VA_ARGS__)
 
 
 
@@ -208,14 +215,13 @@ const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
     const opentracing_string_t* prefix={0};
     switch(id.ns)
     {
+        #define PREFIX_FN(PREFIX,X,...) case lcb_tag_id_##X##_t: OT_STR_GEN(PREFIX##.##X);
         #define MAND(X,...)\
             case lcb_span_id_##X:\
                 switch(id.b)\
                 {\
-                    FOO(X,__VA_ARGS__)\
+                    FOO(PREFIX_FN,X,__VA_ARGS__)\
                 }
-
-
         #define DIV break;
         PP_EACH_TAG_ID(MAND, DIV);
         #undef DIV
