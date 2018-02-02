@@ -2,6 +2,34 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <time.h>
+
+
+#include <time.h>
+#include <sys/time.h>
+#include <stdio.h>
+
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
+
+void current_utc_time(struct timespec *ts) {
+
+#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
+  clock_serv_t cclock;
+  mach_timespec_t mts;
+  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+  clock_get_time(cclock, &mts);
+  mach_port_deallocate(mach_task_self(), cclock);
+  ts->tv_sec = mts.tv_sec;
+  ts->tv_nsec = mts.tv_nsec;
+#else
+  clock_gettime(CLOCK_REALTIME, ts);
+#endif
+
+}
 
 static void test_c_interface()
 {
@@ -12,7 +40,7 @@ static void test_c_interface()
         .size = 1
     };
     opentracing_start_span_options_t options1;
-    timespec_get(&options1.start_timestamp, TIME_UTC);
+    current_utc_time(&options1.start_timestamp);
     options1.references = NULL;
     options1.tags = NULL;
     opentracing_span_t* span1 =
@@ -25,7 +53,7 @@ static void test_c_interface()
         .size = 1
     };
     opentracing_start_span_options_t options2;
-    timespec_get(&options2.start_timestamp, TIME_UTC);
+    current_utc_time(&options2.start_timestamp);
     options2.references = NULL;
     options2.tags = NULL;
     opentracing_span_t* span2 =

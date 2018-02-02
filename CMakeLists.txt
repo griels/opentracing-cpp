@@ -35,7 +35,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/opentracing
 
 # ==============================================================================
 # Configure compilers
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -75,7 +74,9 @@ set(SRCS src/propagation.cpp src/noop.cpp src/tracer.cpp src/c.c src/lcb_ot.c)
 add_library(opentracing SHARED ${SRCS} include/opentracing/lcb_ot.h)
 target_include_directories(opentracing INTERFACE "$<INSTALL_INTERFACE:include/>")
 set_target_properties(opentracing PROPERTIES VERSION ${OPENTRACING_VERSION_STRING}
-                                             SOVERSION ${OPENTRACING_VERSION_MAJOR})
+                                             SOVERSION ${OPENTRACING_VERSION_MAJOR}
+                                             C_STANDARD 11
+                                             )
 add_library(opentracing-static STATIC ${SRCS})
 set_target_properties(opentracing-static PROPERTIES OUTPUT_NAME opentracing)
 target_include_directories(opentracing-static INTERFACE "$<INSTALL_INTERFACE:include/>")

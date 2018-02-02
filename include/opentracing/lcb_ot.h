@@ -148,7 +148,7 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
     return NULL;
 }
 
-//tags
+
 
 #ifdef PP_EACH_TAG_ID
 #error PP_EACH_TAG_ID defined already
@@ -193,12 +193,12 @@ union tag_t {
 #define ENCODE6(FN,PREFIX,x,...) FN(PREFIX,x,...) ENCODE5(FN,PREFIX,__VA_ARGS__)
 
 #define FOO(PREFIX_FN,PREFIX,...) GET_MACRO(__VA_ARGS__, ENCODE4, ENCODE3, ENCODE2, ENCODE1)(PREFIX_FN,PREFIX,__VA_ARGS__)
-#define WRAP(PREFIX,VAL) lcb_tag_id_##PREFIX##_##VAL,
+#define WRAP(PREFIX,VAL,...) lcb_tag_id_##PREFIX##_##VAL,
 #define TAG_ENUM(X,...) typedef enum lcb_tag_id_##X##_t {FOO(WRAP,X,__VA_ARGS__) } lcb_tag_id_##X##_t;
 PP_EACH_TAG_ID(TAG_ENUM,DIV)
 #undef TAG_ENUM
 #undef DIV
-
+//tags
 typedef struct lcb_tag_id_t
 {
     const char* reserved; // NULL
@@ -207,17 +207,14 @@ typedef struct lcb_tag_id_t
 
 } lcb_tag_id_t;
 
-
-
-
 const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
 {
     const opentracing_string_t* prefix={0};
     switch(id.ns)
     {
-        #define PREFIX_FN(PREFIX,X,...) case lcb_tag_id_##PREFIX##_##X##_t: OT_STR_GEN(PREFIX##.##X);
+        #define PREFIX_FN(PREFIX,X,...) case lcb_tag_id_##PREFIX##_##X : OT_STR_GEN(PREFIX##_##X);
         #define MAND(X,...)\
-            case lcb_span_id_##X:\
+            case lcb_tag_ns_##X:\
                 switch(id.b)\
                 {\
                     FOO(PREFIX_FN,X,__VA_ARGS__)\
@@ -238,10 +235,10 @@ const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
 #define OT_STR_VAL(X) {opentracing_value_index_string,.data.string_value=OT_STR_GEN_VAL(X)}
 #define TAG_ID(nspace,type) {NULL, lcb_tag_ns_##nspace, offsetof(lcb_tag_set_##nspace,type)/sizeof(opentracing_value_t)};
 
-static void test()
+int main(int argc,const char* argv[])
 {
     lcb_tag_id_t x=TAG_ID(couchbase,operation_id);
-    const char* result=lcb_ot_tag_str(x);
+    lcb_ot_pt_str(lcb_ot_tag_str(x));
     lcb_tag_set_couchbase y={.operation_id=OT_STR_VAL(Hello),.service=OT_STR_VAL(World)};
     lcb_span_id_t test={NULL,lcb_span_id_DispatchToServer};
     lcb_ot_pt_str(lcb_ot_id_str(test));
