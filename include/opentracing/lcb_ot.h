@@ -158,30 +158,11 @@ const opentracing_string_t* lcb_ot_id_str(lcb_span_id_t id)
     NAMESPACE_FN(local,address) DIV\
     NAMESPACE_FN(peer,address)
 
-
 #define DIV ,
 #define NS_ENUM(X,...) lcb_tag_ns_##X
     typedef enum lcb_tag_ns_t { PP_EACH_TAG_ID(NS_ENUM,DIV) } lcb_tag_ns_t;
 #undef NS_ENUM
 #undef DIV
-
-#define DIV
-#define TAG_TYPE(NAMESPACE,...)\
-\
-typedef struct lcb_tag_set_##NAMESPACE\
-{\
-    opentracing_value_t __VA_ARGS__;\
-} lcb_tag_set_##NAMESPACE;\
-
-PP_EACH_TAG_ID(TAG_TYPE,DIV);
-#undef TAG_TYPE
-
-union tag_t {
-#define TAG_ENTRY(X,...)\
-    lcb_tag_set_##X m_##X;
-    PP_EACH_TAG_ID(TAG_ENTRY,DIV);
-} tag_t;
-#undef TAG_ENTRY
 
 #define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
 
@@ -195,6 +176,7 @@ union tag_t {
 #define FOO(PREFIX_FN,PREFIX,...) GET_MACRO(__VA_ARGS__, ENCODE4, ENCODE3, ENCODE2, ENCODE1)(PREFIX_FN,PREFIX,__VA_ARGS__)
 #define WRAP(PREFIX,VAL,...) lcb_tag_id_##PREFIX##_##VAL,
 #define TAG_ENUM(X,...) typedef enum lcb_tag_id_##X##_t {FOO(WRAP,X,__VA_ARGS__) } lcb_tag_id_##X##_t;
+#define DIV
 PP_EACH_TAG_ID(TAG_ENUM,DIV)
 #undef TAG_ENUM
 #undef DIV
@@ -229,6 +211,26 @@ const opentracing_string_t* lcb_ot_tag_str(lcb_tag_id_t id)
     }
     return NULL;
 }
+#define DIV
+#define TAG_TYPE(NAMESPACE,...)\
+\
+typedef struct lcb_tag_set_##NAMESPACE\
+{\
+    opentracing_value_t __VA_ARGS__;\
+} lcb_tag_set_##NAMESPACE;\
+
+PP_EACH_TAG_ID(TAG_TYPE,DIV);
+#undef TAG_TYPE
+#undef DIV
+
+#define DIV
+union tag_t {
+#define TAG_ENTRY(X,...)\
+    lcb_tag_set_##X m_##X;
+    PP_EACH_TAG_ID(TAG_ENTRY,DIV);
+} tag_t;
+#undef TAG_ENTRY
+#undef DIV
 
 #undef PP_EACH_TAG_ID
 
